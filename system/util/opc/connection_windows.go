@@ -413,7 +413,7 @@ func (ai *AutomationItems) readFromOpc(opcitem *ole.IDispatch) (reItem Item, res
 func (ai *AutomationItems) writeToOpc(opcitem *ole.IDispatch, value interface{}) (result_err error) {
 	defer func() {
 		if err := recover(); err != nil {
-			result_err = fmt.Errorf("tag异常或服务异常")
+			result_err = fmt.Errorf("写入时点位发生异常")
 		}
 	}()
 

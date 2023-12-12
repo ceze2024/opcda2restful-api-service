@@ -4,7 +4,7 @@
  * @gitee: https://gitee.com/chun22222222
  * @github: https://github.com/chun222
  * @Desc:markdown
- * @LastEditTime: 2023-12-12 11:29:13
+ * @LastEditTime: 2023-12-12 17:13:30
  * @FilePath: \opcConnector\system\service\opcService\opcService.go
  */
 
@@ -125,12 +125,12 @@ func (_this *OpcService) Read(r []string) (result_err error, result map[string]o
 }
 
 //写入
-func (_this *OpcService) Write(r map[string]interface{}) (result_err error, result_map map[string]error) {
+func (_this *OpcService) Write(r map[string]interface{}) (result_err error, result_map map[string]bool) {
+	result_map = make(map[string]bool)
 	defer func() {
 		if err := recover(); err != nil {
 			opcConnClient = nil //清空连接
-			result_err = fmt.Errorf("tag异常或服务异常")
-			result_map = make(map[string]error)
+			result_err = fmt.Errorf("tag异常或服务异常：%s", err.(error).Error())
 			log.Write(log.Error, "opc服务异常！"+err.(error).Error())
 		}
 
@@ -153,10 +153,10 @@ func (_this *OpcService) Write(r map[string]interface{}) (result_err error, resu
 				opcConnClient.Add(k)
 				err = opcConnClient.Write(k, v)
 				if err != nil {
-					result_map[k] = err
+					result_map[k] = false
 					result_err = err
 				} else {
-					result_map[k] = nil
+					result_map[k] = true
 				}
 			}
 			return result_err, result_map
@@ -166,10 +166,10 @@ func (_this *OpcService) Write(r map[string]interface{}) (result_err error, resu
 				opcConnClient.Add(k)
 				err := opcConnClient.Write(k, v)
 				if err != nil {
-					result_map[k] = err
+					result_map[k] = false
 					result_err = err
 				} else {
-					result_map[k] = nil
+					result_map[k] = true
 				}
 			}
 			return result_err, result_map
@@ -189,10 +189,10 @@ func (_this *OpcService) Write(r map[string]interface{}) (result_err error, resu
 			opcConnClient.Add(k)
 			err := opcConnClient.Write(k, v)
 			if err != nil {
-				result_map[k] = err
+				result_map[k] = false
 				result_err = err
 			} else {
-				result_map[k] = nil
+				result_map[k] = true
 			}
 		}
 		return result_err, result_map

@@ -4,7 +4,7 @@
  * @gitee: https://gitee.com/chun22222222
  * @github: https://github.com/chun222
  * @Desc:
- * @LastEditTime: 2023-10-16 17:17:56
+ * @LastEditTime: 2023-12-07 17:25:24
  * @FilePath: \opcConnector\system\util\opc\connection.go
  */
 package opc
@@ -49,7 +49,7 @@ const (
 
 //Connection represents the interface for the connection to the OPC server.
 type Connection interface {
-	Add(...string) error
+	Add(...string) map[string]error
 	Remove(string)
 	Read() map[string]Item
 	ReadItem(string) Item

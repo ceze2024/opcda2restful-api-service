@@ -3,7 +3,7 @@
 Secret = 'ADSDWW1DSADSADSAWJJK'
 HttpPort = 9022
 OpcHost = '127.0.0.1'
-OpcServer = 'Kepware.KEPServerEX.V6'
+OpcServer = 'opcserversim.Instance.1'
 KeepConn = 1
 
 [config.Zaplog]

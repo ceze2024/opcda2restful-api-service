@@ -327,29 +327,30 @@ type AutomationItems struct {
 }
 
 //addSingle adds the tag and returns an error. Client handles are not implemented yet.
-func (ai *AutomationItems) addSingle(tag string) error {
+func (ai *AutomationItems) addSingle(tag string) (result_err error) {
+	defer func() {
+		if err := recover(); err != nil {
+			result_err = fmt.Errorf("%s点位不存在", tag)
+		}
+	}()
 	clientHandle := int32(1)
 	item, err := oleutil.CallMethod(ai.addItemObject, "AddItem", tag, clientHandle)
 	if err != nil {
 		return errors.New(tag + ":" + err.Error())
 	}
 	ai.items[tag] = item.ToIDispatch()
-	return nil
+	return
 }
 
 //Add accepts a variadic parameters of tags.
-func (ai *AutomationItems) Add(tags ...string) error {
-	var errResult string
+func (ai *AutomationItems) Add(tags ...string) map[string]error {
+
+	var errResult map[string]error = make(map[string]error, 0)
 	for _, tag := range tags {
 		err := ai.addSingle(tag)
-		if err != nil {
-			errResult = err.Error() + errResult
-		}
+		errResult[tag] = err
 	}
-	if errResult == "" {
-		return nil
-	}
-	return errors.New(errResult)
+	return errResult
 }
 
 //Remove removes the tag.
@@ -376,7 +377,15 @@ func ensureInt16(q interface{}) int16 {
 }
 
 //readFromOPC reads from the server and returns an Item and error.
-func (ai *AutomationItems) readFromOpc(opcitem *ole.IDispatch) (Item, error) {
+func (ai *AutomationItems) readFromOpc(opcitem *ole.IDispatch) (reItem Item, result_err error) {
+
+	defer func() {
+		if err := recover(); err != nil {
+			result_err = fmt.Errorf("tag异常或服务异常")
+		}
+
+	}()
+
 	v := ole.NewVariant(ole.VT_R4, 0)
 	q := ole.NewVariant(ole.VT_INT, 0)
 	ts := ole.NewVariant(ole.VT_DATE, 0)
@@ -391,15 +400,23 @@ func (ai *AutomationItems) readFromOpc(opcitem *ole.IDispatch) (Item, error) {
 		return Item{}, err
 	}
 	opcReadsCounter.WithLabelValues("success").Inc()
-	return Item{
+
+	reItem = Item{
 		Value:     v.Value(),
 		Quality:   ensureInt16(q.Value()), // FIX: ensure the quality value is int16
 		Timestamp: ts.Value().(time.Time),
-	}, nil
+	}
+	return
 }
 
 //writeToOPC writes value to opc tag and return an error
-func (ai *AutomationItems) writeToOpc(opcitem *ole.IDispatch, value interface{}) error {
+func (ai *AutomationItems) writeToOpc(opcitem *ole.IDispatch, value interface{}) (result_err error) {
+	defer func() {
+		if err := recover(); err != nil {
+			result_err = fmt.Errorf("tag异常或服务异常")
+		}
+	}()
+
 	_, err := oleutil.CallMethod(opcitem, "Write", value)
 	if err != nil {
 		// TODO: Prometheus Monitoring
@@ -407,7 +424,7 @@ func (ai *AutomationItems) writeToOpc(opcitem *ole.IDispatch, value interface{})
 		return err
 	}
 	//opcWritesCounter.WithLabelValues("failed").Inc()
-	return nil
+	return
 }
 
 //Close closes the OLE objects in AutomationItems.
@@ -478,7 +495,7 @@ func (conn *opcConnectionImpl) Read() map[string]Item {
 		if err != nil {
 			logger.Printf("Cannot read %s: %s. Trying to fix.", tag, err)
 			conn.fix()
-			break
+			continue
 		}
 		allTags[tag] = item
 	}
@@ -541,10 +558,8 @@ func NewConnection(server string, nodes []string, tags []string) (Connection, er
 	if err != nil {
 		return &opcConnectionImpl{}, err
 	}
-	err = items.Add(tags...)
-	if err != nil {
-		return &opcConnectionImpl{}, err
-	}
+	items.Add(tags...)
+
 	conn := opcConnectionImpl{
 		AutomationObject: object,
 		AutomationItems:  items,

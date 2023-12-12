@@ -4,7 +4,7 @@
  * @gitee: https://gitee.com/chun22222222
  * @github: https://github.com/chun222
  * @Desc:
- * @LastEditTime: 2023-07-12 17:31:34
+ * @LastEditTime: 2023-12-12 11:34:22
  * @FilePath: \opcConnector\system\controller\base\opc.go
  */
 package base
@@ -87,12 +87,12 @@ func Write(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err = opcSer.Write(r)
+	err, reMap := opcSer.Write(r)
 	if err != nil {
-		response.FailWithMessage(err.Error(), c)
+		response.FailWithDetailed(reMap, err.Error(), c)
 		return
 	}
-	response.Ok(c)
+	response.OkWithData(reMap, c)
 }
 
 func GetChildren(c *gin.Context) {

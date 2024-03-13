@@ -8,4 +8,4 @@ KeepConn = 1
 
 [config.Zaplog]
 Director = 'runtime/log'
-Level = 'error'
+Level = 'info'

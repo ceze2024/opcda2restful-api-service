@@ -4,7 +4,7 @@
  * @gitee: https://gitee.com/chun22222222
  * @github: https://github.com/chun222
  * @Desc:markdown
- * @LastEditTime: 2023-12-12 17:13:30
+ * @LastEditTime: 2023-12-20 11:54:22
  * @FilePath: \opcConnector\system\service\opcService\opcService.go
  */
 
@@ -87,11 +87,19 @@ func (_this *OpcService) Read(r []string) (result_err error, result map[string]o
 			}
 			opcConnClient = client
 			result = client.Read()
+			//清除点位
+			for _, v := range r {
+				opcConnClient.Remove(v)
+			}
 			return nil, result
 		} else {
 			//判断点位是否存在
 			opcConnClient.Add(r...)
 			mapResult := opcConnClient.Read()
+			//清除点位
+			for _, v := range r {
+				opcConnClient.Remove(v)
+			}
 			return nil, mapResult
 
 			// err := opcConnClient.Add(r...)

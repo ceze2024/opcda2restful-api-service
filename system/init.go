@@ -4,7 +4,7 @@
  * @gitee: https://gitee.com/chun22222222
  * @github: https://github.com/chun222
  * @Desc:启动核心服务
- * @LastEditTime: 2023-07-12 14:58:12
+ * @LastEditTime: 2024-03-14 16:46:47
  * @FilePath: \opcConnector\system\init.go
  */
 package system
@@ -27,7 +27,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 var basedir = sys.ExecutePath() + "/" //根目录
@@ -47,11 +46,12 @@ func Init(staticFs embed.FS) {
 
 	r := router.InitRouter(staticFs)
 	s := &http.Server{
-		Addr:           fmt.Sprintf(":%d", config.Instance().Config.App.HttpPort),
-		Handler:        r,
-		ReadTimeout:    30 * time.Second,
-		WriteTimeout:   30 * time.Second,
-		MaxHeaderBytes: 1 << 20,
+		Addr:         fmt.Sprintf(":%d", config.Instance().Config.App.HttpPort),
+		Handler:      r,
+		ReadTimeout:  0, //设置超时时间
+		WriteTimeout: 0, //设置超时时间
+		//1GB
+		MaxHeaderBytes: 1 << 30,
 	}
 
 	url := fmt.Sprintf(`http://127.0.0.1:%d`, config.Instance().Config.App.HttpPort)

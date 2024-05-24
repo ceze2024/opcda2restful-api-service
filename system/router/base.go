@@ -4,7 +4,7 @@
  * @gitee: https://gitee.com/chun22222222
  * @github: https://github.com/chun222
  * @Desc:
- * @LastEditTime: 2023-07-12 17:29:45
+ * @LastEditTime: 2024-05-24 12:01:22
  * @FilePath: \opcConnector\system\router\base.go
  */
 
@@ -19,6 +19,8 @@ import (
 func BaseRouter(r *gin.Engine) {
 
 	r.POST("/init", base.Init)
+	r.POST("/start", base.StartIt)
+	r.POST("/api/opc/start", base.StartIt)
 	r.Use(middleware.JwtMid())
 	{
 		r.POST("/ServerList", base.ServerList)

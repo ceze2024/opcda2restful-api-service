@@ -4,12 +4,13 @@
  * @gitee: https://gitee.com/chun22222222
  * @github: https://github.com/chun222
  * @Desc:
- * @LastEditTime: 2023-12-12 11:34:22
+ * @LastEditTime: 2024-05-24 12:03:56
  * @FilePath: \opcConnector\system\controller\base\opc.go
  */
 package base
 
 import (
+	"net/http"
 	"opcConnector/system/core/config"
 	"opcConnector/system/core/response"
 	"opcConnector/system/service/opcService"
@@ -21,6 +22,10 @@ import (
 )
 
 var opcSer opcService.OpcService
+
+func StartIt(c *gin.Context) {
+	c.JSON(http.StatusOK, true)
+}
 
 func Init(c *gin.Context) {
 	re := make(map[string]string)

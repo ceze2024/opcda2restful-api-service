@@ -13,10 +13,10 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '1.24'
         architecture: 'x86' # 使用32位版本
@@ -36,21 +36,23 @@ jobs:
         go build -ldflags="-s -w" -o opcConnector-win64.exe
 
     - name: Upload 32-bit artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: opcConnector-win32
         path: opcConnector-win32.exe
+        compression-level: 0
 
     - name: Upload 64-bit artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: opcConnector-win64
         path: opcConnector-win64.exe
+        compression-level: 0
 
     # 如果需要创建 Release
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           opcConnector-win32.exe

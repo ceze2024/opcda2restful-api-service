@@ -19,21 +19,34 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.24.0'
-        architecture: 'x86' # 使用32位版本
+        architecture: 'x86'
+
+    - name: Set system encoding
+      run: |
+        chcp 65001
+
+    - name: Set GOPROXY
+      run: |
+        go env -w GOPROXY=https://goproxy.cn,direct
 
     - name: Install dependencies
       run: |
         go mod tidy
 
+    - name: Check dependencies
+      run: |
+        go list -m all
+        go vet ./...
+
     - name: Build 32-bit
       run: |
         set GOARCH=386
-        go build -ldflags="-s -w" -o opcConnector-win32.exe
+        go build -v -ldflags="-s -w" -o opcConnector-win32.exe
 
     - name: Build 64-bit
       run: |
         set GOARCH=amd64
-        go build -ldflags="-s -w" -o opcConnector-win64.exe
+        go build -v -ldflags="-s -w" -o opcConnector-win64.exe
 
     - name: Upload 32-bit artifact
       uses: actions/upload-artifact@v4

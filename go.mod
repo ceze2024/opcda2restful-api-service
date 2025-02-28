@@ -6,7 +6,6 @@ require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-ole/go-ole v1.2.6
 	github.com/kardianos/service v1.2.2
-	github.com/konimarti/opc v0.3.1
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.14.0

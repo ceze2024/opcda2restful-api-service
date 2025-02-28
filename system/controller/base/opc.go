@@ -10,6 +10,7 @@
 package base
 
 import (
+	"context"
 	"net/http"
 	"opcConnector/system/core/config"
 	"opcConnector/system/core/response"
@@ -19,6 +20,7 @@ import (
 
 	// "opcConnector/system/service/md"
 	"opcConnector/system/model/RequestModel"
+	"time"
 )
 
 var opcSer opcService.OpcService
@@ -50,39 +52,84 @@ func SetServer(c *gin.Context) {
 }
 
 func Read(c *gin.Context) {
+	// 添加上下文超时控制
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+	
 	var r RequestModel.OpcTags
 	err := c.ShouldBind(&r)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err, v := opcSer.Read(r.Tags)
-	if err != nil {
-		response.FailWithMessage(err.Error(), c)
+	
+	// 创建一个完成通道
+	done := make(chan struct{})
+	var opcErr error
+	var v map[string]opc.Item
+	
+	go func() {
+		err, v = opcSer.Read(r.Tags)
+		if err != nil {
+			opcErr = err
+		}
+		close(done)
+	}()
+	
+	// 等待OPC读取完成或超时
+	select {
+	case <-ctx.Done():
+		response.FailWithMessage("读取超时", c)
 		return
+	case <-done:
+		if opcErr != nil {
+			response.FailWithMessage(opcErr.Error(), c)
+			return
+		}
+		response.OkWithData(v, c)
 	}
-	response.OkWithData(v, c)
 }
 
 func ReadValue(c *gin.Context) {
+	// 类似的超时处理
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+	
 	var r RequestModel.OpcTags
 	err := c.ShouldBind(&r)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err, v := opcSer.Read(r.Tags)
-	if err != nil {
-		response.FailWithMessage(err.Error(), c)
+	
+	done := make(chan struct{})
+	var opcErr error
+	var v map[string]opc.Item
+	
+	go func() {
+		err, v = opcSer.Read(r.Tags)
+		if err != nil {
+			opcErr = err
+		}
+		close(done)
+	}()
+	
+	select {
+	case <-ctx.Done():
+		response.FailWithMessage("读取超时", c)
 		return
+	case <-done:
+		if opcErr != nil {
+			response.FailWithMessage(opcErr.Error(), c)
+			return
+		}
+		
+		var re map[string]interface{} = make(map[string]interface{})
+		for key, item := range v {
+			re[key] = item.Value
+		}
+		response.OkWithData(re, c)
 	}
-
-	var re map[string]interface{} = make(map[string]interface{})
-	for key, item := range v {
-		re[key] = item.Value
-	}
-
-	response.OkWithData(re, c)
 }
 
 func Write(c *gin.Context) {

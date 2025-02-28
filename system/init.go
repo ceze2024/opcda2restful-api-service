@@ -22,6 +22,7 @@ import (
 	"embed"
 	"fmt"
 	"net/http"
+	"time"
 
 	//"os/exec"
 	"os/exec"
@@ -46,11 +47,11 @@ func Init(staticFs embed.FS) {
 
 	r := router.InitRouter(staticFs)
 	s := &http.Server{
-		Addr:         fmt.Sprintf(":%d", config.Instance().Config.App.HttpPort),
-		Handler:      r,
-		ReadTimeout:  0, //设置超时时间
-		WriteTimeout: 0, //设置超时时间
-		//1GB
+		Addr:           fmt.Sprintf(":%d", config.Instance().Config.App.HttpPort),
+		Handler:        r,
+		ReadTimeout:    60 * time.Second,    // 添加读取超时
+		WriteTimeout:   60 * time.Second,    // 添加写入超时
+		IdleTimeout:    120 * time.Second,   // 添加空闲超时
 		MaxHeaderBytes: 1 << 30,
 	}
 

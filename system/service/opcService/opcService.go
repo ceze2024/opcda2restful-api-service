@@ -23,6 +23,8 @@ import (
 	"github.com/spf13/viper"
 	"opcConnector/system/util/opc"
 	//"sort"
+	"context"
+	"time"
 )
 
 //保持连接
@@ -63,73 +65,46 @@ func (_this *OpcService) SetServer(r string) error {
 
 //获取点位的值
 func (_this *OpcService) Read(r []string) (result_err error, result map[string]opc.Item) {
-
 	defer func() {
 		if err := recover(); err != nil {
 			opcConnClient = nil //清空连接
 			result_err = fmt.Errorf("tag异常或服务异常")
-			log.Write(log.Error, "opc服务异常！"+err.(error).Error())
+			log.Write(log.Error, "opc服务异常！"+fmt.Sprint(err))
 		}
-
 	}()
 
-	//判断是否为保持连接模式
-	if config.Instance().Config.App.KeepConn == 1 {
-		//判断是否已经连接
-		if opcConnClient == nil {
-			client, err := opc.NewConnection(
-				config.Instance().Config.App.OpcServer,         // ProgId
-				[]string{config.Instance().Config.App.OpcHost}, //  OPC servers nodes
-				r, // slice of OPC tags
-			)
-			if err != nil {
-				return err, nil
-			}
-			opcConnClient = client
-			result = client.Read()
-			//清除点位
-			for _, v := range r {
-				opcConnClient.Remove(v)
-			}
-			return nil, result
-		} else {
-			//判断点位是否存在
-			opcConnClient.Add(r...)
-			mapResult := opcConnClient.Read()
-			//清除点位
-			for _, v := range r {
-				opcConnClient.Remove(v)
-			}
-			return nil, mapResult
+	// 添加超时控制
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
 
-			// err := opcConnClient.Add(r...)
-			// if err != nil {
-			// 	opcConnClient = nil //清空连接
-			// 	return err, nil
-			// }
+	resultChan := make(chan map[string]opc.Item, 1)
+	errChan := make(chan error, 1)
 
-			// var mapResult map[string]opc.Item = make(map[string]opc.Item)
-			// for _, v := range r {
-			// 	mapResult[v] = opcConnClient.ReadItem(v)
-			// }
-			// return nil, mapResult
-		}
-
-	} else {
+	go func() {
+		// 不再使用保持连接模式，每次都创建新连接
 		client, err := opc.NewConnection(
-			config.Instance().Config.App.OpcServer,         // ProgId
-			[]string{config.Instance().Config.App.OpcHost}, //  OPC servers nodes
-			r, // slice of OPC tags
+			config.Instance().Config.App.OpcServer,
+			[]string{config.Instance().Config.App.OpcHost},
+			r,
 		)
 		if err != nil {
-			return err, nil
+			errChan <- err
+			return
 		}
-
 		defer client.Close()
 		result = client.Read()
+		resultChan <- result
+	}()
+
+	// 等待结果或超时
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("OPC读取超时"), nil
+	case err := <-errChan:
+		return err, nil
+	case result := <-resultChan:
 		return nil, result
 	}
-
 }
 
 //写入
@@ -137,75 +112,34 @@ func (_this *OpcService) Write(r map[string]interface{}) (result_err error, resu
 	result_map = make(map[string]bool)
 	defer func() {
 		if err := recover(); err != nil {
-			opcConnClient = nil //清空连接
-			result_err = fmt.Errorf("tag异常或服务异常：%s", err.(error).Error())
-			log.Write(log.Error, "opc服务异常！"+err.(error).Error())
+			result_err = fmt.Errorf("tag异常或服务异常：%s", fmt.Sprint(err))
+			log.Write(log.Error, "opc服务异常！"+fmt.Sprint(err))
 		}
-
 	}()
 
-	//判断是否为保持连接模式
-	if config.Instance().Config.App.KeepConn == 1 {
-		//判断是否已经连接
-		if opcConnClient == nil {
-			client, err := opc.NewConnection(
-				config.Instance().Config.App.OpcServer,         // ProgId
-				[]string{config.Instance().Config.App.OpcHost}, //  OPC servers nodes
-				nil, // slice of OPC tags
-			)
-			if err != nil {
-				return err, nil
-			}
-			opcConnClient = client
-			for k, v := range r {
-				opcConnClient.Add(k)
-				err = opcConnClient.Write(k, v)
-				if err != nil {
-					result_map[k] = false
-					result_err = err
-				} else {
-					result_map[k] = true
-				}
-			}
-			return result_err, result_map
-		} else {
-
-			for k, v := range r {
-				opcConnClient.Add(k)
-				err := opcConnClient.Write(k, v)
-				if err != nil {
-					result_map[k] = false
-					result_err = err
-				} else {
-					result_map[k] = true
-				}
-			}
-			return result_err, result_map
-		}
-
-	} else {
-		client, err := opc.NewConnection(
-			config.Instance().Config.App.OpcServer,         // ProgId
-			[]string{config.Instance().Config.App.OpcHost}, //  OPC servers nodes
-			nil, // slice of OPC tags
-		)
-		if err != nil {
-			return err, nil
-		}
-		defer client.Close()
-		for k, v := range r {
-			opcConnClient.Add(k)
-			err := opcConnClient.Write(k, v)
-			if err != nil {
-				result_map[k] = false
-				result_err = err
-			} else {
-				result_map[k] = true
-			}
-		}
-		return result_err, result_map
+	// 创建新连接
+	client, err := opc.NewConnection(
+		config.Instance().Config.App.OpcServer,
+		[]string{config.Instance().Config.App.OpcHost},
+		nil,
+	)
+	if err != nil {
+		return err, nil
 	}
+	defer client.Close()
 
+	// 写入所有标签
+	for k, v := range r {
+		client.Add(k)
+		err := client.Write(k, v)
+		if err != nil {
+			result_map[k] = false
+			result_err = err
+		} else {
+			result_map[k] = true
+		}
+	}
+	return result_err, result_map
 }
 
 func (_this *OpcService) TagTree() (result_err error, v interface{}) {

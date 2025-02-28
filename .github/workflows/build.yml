@@ -18,7 +18,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.24.0'
         architecture: 'x86' # 使用32位版本
 
     - name: Install dependencies
